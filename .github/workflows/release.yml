@@ -159,10 +159,11 @@ jobs:
           PROJECT_VERSION: ${{ needs.version-check.outputs.version }}
 
       - name: Package
+        shell: bash
         run: |
           BINARY_NAME=${{ inputs.binary_name || inputs.crate_name }}
           cd target/x86_64-pc-windows-msvc/release
-          ls
+          ls -R
           7z a ../../../${{ inputs.crate_name }}-x86_64-pc-windows-msvc.zip ${BINARY_NAME}.exe
 
       - name: Upload artifact
