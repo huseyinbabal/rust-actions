@@ -1,0 +1,94 @@
+name: Reusable PR Check
+
+on:
+  workflow_call:
+    inputs:
+      check_issue_link:
+        required: false
+        type: boolean
+        default: true
+        description: "Check if PR description links to an issue"
+      run_tests:
+        required: false
+        type: boolean
+        default: true
+        description: "Run cargo test"
+      run_fmt:
+        required: false
+        type: boolean
+        default: true
+        description: "Run cargo fmt --check"
+      run_clippy:
+        required: false
+        type: boolean
+        default: true
+        description: "Run cargo clippy"
+
+jobs:
+  check-issue-link:
+    if: inputs.check_issue_link
+    name: Check Issue Link
+    runs-on: ubuntu-latest
+    steps:
+      - name: Check PR description for issue link
+        uses: actions/github-script@v7
+        with:
+          script: |
+            const pr = context.payload.pull_request;
+            const body = pr.body || '';
+            
+            // Check for issue references: "Closes #123", "Fixes #123", "Resolves #123", etc.
+            const issuePattern = /(close[sd]?|fix(e[sd])?|resolve[sd]?)\s*#\d+/gi;
+            const hasIssueLink = issuePattern.test(body);
+            
+            // Also check for direct issue URL links
+            const urlPattern = /github\.com\/[\w-]+\/[\w-]+\/issues\/\d+/gi;
+            const hasIssueUrl = urlPattern.test(body);
+            
+            if (!hasIssueLink && !hasIssueUrl) {
+              core.setFailed(
+                '❌ PR must be linked to an issue.\n\n' +
+                'Please update your PR description to include one of:\n' +
+                '  - "Closes #123"\n' +
+                '  - "Fixes #123"\n' +
+                '  - "Resolves #123"\n\n' +
+                'If there is no existing issue, please create one first.'
+              );
+            } else {
+              console.log('✅ PR is linked to an issue');
+            }
+
+  rust-checks:
+    name: Rust Checks
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Install Rust
+        uses: dtolnay/rust-toolchain@stable
+        with:
+          components: clippy, rustfmt
+
+      - name: Cache dependencies
+        uses: actions/cache@v3
+        with:
+          path: |
+            ~/.cargo/bin/
+            ~/.cargo/registry/index/
+            ~/.cargo/registry/cache/
+            ~/.cargo/git/db/
+            target/
+          key: ${{ runner.os }}-cargo-${{ hashFiles('**/Cargo.lock') }}
+
+      - name: Check formatting
+        if: inputs.run_fmt
+        run: cargo fmt -- --check
+
+      - name: Run clippy
+        if: inputs.run_clippy
+        run: cargo clippy -- -D warnings
+
+      - name: Run tests
+        if: inputs.run_tests
+        run: cargo test
