@@ -1,0 +1,7 @@
+# CodeQL
+codeql-db/
+*.sarif
+
+# Rust (for projects using this workflow)
+target/
+Cargo.lock
