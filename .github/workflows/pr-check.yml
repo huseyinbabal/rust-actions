@@ -23,6 +23,11 @@ on:
         type: boolean
         default: true
         description: "Run cargo clippy"
+      run_security_scan:
+        required: false
+        type: boolean
+        default: true
+        description: "Run CodeQL security scanning"
 
 jobs:
   check-issue-link:
@@ -92,3 +97,37 @@ jobs:
       - name: Run tests
         if: inputs.run_tests
         run: cargo test
+
+  security-scan:
+    if: inputs.run_security_scan
+    name: CodeQL Security Scan
+    runs-on: ubuntu-latest
+    permissions:
+      security-events: write
+      contents: read
+      actions: read
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Initialize CodeQL
+        uses: github/codeql-action/init@v4
+        with:
+          languages: rust
+          build-mode: none
+          queries: security-extended
+
+      - name: Perform CodeQL Analysis
+        uses: github/codeql-action/analyze@v4
+        with:
+          category: "/language:rust"
+          output: sarif-results
+          upload: always
+
+      - name: Upload SARIF as artifact
+        uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: security-scan-results
+          path: sarif-results
+          retention-days: 30
