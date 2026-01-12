@@ -26,8 +26,8 @@ on:
       run_security_scan:
         required: false
         type: boolean
-        default: true
-        description: "Run CodeQL security scanning"
+        default: false
+        description: "Run CodeQL security scanning (requires caller to grant permissions: actions: read, security-events: write)"
 
 jobs:
   check-issue-link:
