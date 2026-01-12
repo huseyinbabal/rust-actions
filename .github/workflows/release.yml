@@ -223,7 +223,7 @@ jobs:
         run: cargo publish --token ${{ secrets.CRATES_IO_TOKEN }}
 
   homebrew:
-    needs: release
+    needs: [release, version-check]
     runs-on: ubuntu-latest
     steps:
       - name: Download artifacts
@@ -259,7 +259,7 @@ jobs:
           class $CLASS_NAME < Formula
             desc "${{ inputs.description }}"
             homepage "${{ inputs.homepage }}"
-            version "${{ needs.release.outputs.version }}"
+            version "${{ needs.version-check.outputs.version }}"
             license "${{ inputs.license }}"
 
             on_macos do
