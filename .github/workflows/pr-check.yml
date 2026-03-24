@@ -28,6 +28,16 @@ on:
         type: boolean
         default: false
         description: "Run CodeQL security scanning (requires caller to grant permissions: actions: read, security-events: write)"
+      check_coverage:
+        required: false
+        type: boolean
+        default: false
+        description: "Run code coverage using cargo-llvm-cov"
+      coverage_threshold:
+        required: false
+        type: number
+        default: 0
+        description: "Minimum line coverage percentage (0-100). If set above 0, the job fails when coverage is below this threshold."
 
 jobs:
   check-issue-link:
@@ -130,4 +140,44 @@ jobs:
         with:
           name: security-scan-results
           path: sarif-results
+          retention-days: 30
+
+  coverage:
+    if: inputs.check_coverage
+    name: Code Coverage
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Install Rust
+        uses: dtolnay/rust-toolchain@stable
+
+      - name: Cache dependencies
+        uses: actions/cache@v3
+        with:
+          path: |
+            ~/.cargo/bin/
+            ~/.cargo/registry/index/
+            ~/.cargo/registry/cache/
+            ~/.cargo/git/db/
+            target/
+          key: ${{ runner.os }}-cargo-coverage-${{ hashFiles('**/Cargo.lock') }}
+
+      - name: Install cargo-llvm-cov
+        uses: taiki-e/install-action@cargo-llvm-cov
+
+      - name: Generate code coverage
+        run: |
+          THRESHOLD_ARG=""
+          if [ "${{ inputs.coverage_threshold }}" != "0" ]; then
+            THRESHOLD_ARG="--fail-under-lines ${{ inputs.coverage_threshold }}"
+          fi
+          cargo llvm-cov --all-features --workspace --lcov --output-path lcov.info $THRESHOLD_ARG
+
+      - name: Upload coverage artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: coverage-report
+          path: lcov.info
           retention-days: 30
